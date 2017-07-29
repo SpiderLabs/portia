@@ -77,14 +77,14 @@ class WMIEXEC:
                                                 self.__nthash, self.__aesKey, kdcHost=self.__kdcHost)
 
                 dialect = smbConnection.getDialect()
-                if dialect == SMB_DIALECT:
-                    logging.info("SMBv1 dialect used")
-                elif dialect == SMB2_DIALECT_002:
-                    logging.info("SMBv2.0 dialect used")
-                elif dialect == SMB2_DIALECT_21:
-                    logging.info("SMBv2.1 dialect used")
-                else:
-                    logging.info("SMBv3.0 dialect used")
+                #if dialect == SMB_DIALECT:
+                #    logging.info("SMBv1 dialect used")
+                #elif dialect == SMB2_DIALECT_002:
+                #    logging.info("SMBv2.0 dialect used")
+                #elif dialect == SMB2_DIALECT_21:
+                #    logging.info("SMBv2.1 dialect used")
+                #else:
+                #    logging.info("SMBv3.0 dialect used")
             except Exception as e:
                 return e
                 sys.stdout.flush()

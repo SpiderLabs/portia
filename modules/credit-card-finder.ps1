@@ -32,31 +32,6 @@
 ##    Contact: Twitter - @jksdua, Email - jksdua@gmail.com
 ##
 ###################################################################
-###################################################################
-
-###################################################################
-## To do:
-## - Allow logging to file
-## - Add support for word and powerpoint
-## - Modularise the file
-##     Separate scanner and output
-##     Compress size using techniques in
-##        http://technet.microsoft.com/en-us/magazine/2008.04.securitywatch.aspx
-##        http://blesseddlo.wordpress.com/2011/01/31/powershell-re-to-match-credit-card-patterns/
-## - Add debug ability for printing errors
-## - Add matcher for key strings such as "credit card, pci, invoice etc"
-## - Add support for logging output to file
-## - Use Github issue tracker for recording to do items
-## - Output file type next to the filename when outputting
-## - Provide stats on what filetype had the most findings etc
-## - Add support for multiple streams such as db etc
-## - Add support for hasehd credit cards
-##     https://www.netspi.com/blog/entryid/182/cracking-credit-card-hashes-with-powershell
-##     http://www.sectechno.com/2013/09/15/checking-credit-card-numbers-with-powershell/
-## - Add support for detecting credit card type
-## - Add incremental scan support
-## - Watch for interrupt and cleanup excel and other variables
-###################################################################
 
 param (
   [string]$path = $(throw "-path is required")

