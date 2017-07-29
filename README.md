@@ -6,15 +6,13 @@ Portia aims to automate a number of techniques commonly performed on internal ne
 - Convenience modules
 
 Portia is a genus of jumping spider that feeds on other spiders - known for their intelligent hunting behaviour and problem solving capabilities usually only found in larger animals
-  
-#Slides   
-https://docs.google.com/presentation/d/1x_1bjCCD5hwJFWzlHM0lEPOHdWUlfYgjkUYBtdBFEmM/pub?start=false&loop=false&delayms=3000  
 
-#Videos (Will be adding more soon)  
+## Videos (Will be adding more soon)  
 Video that shows privilege escalation via impersonation tokens and running of post exploitation modules  
 https://asciinema.org/a/45ry3g26devqcabpugwyz4to5  
 
-#Dependencies
+## Dependencies
+
 ```
 pip install pysmb tabulate termcolor xmltodict impacket
 
