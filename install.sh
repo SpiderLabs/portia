@@ -26,3 +26,6 @@ python setup.py install
 cd /opt
 git clone https://github.com/milo2012/portia.git && cd portia
 ./portia.py
+
+sudo pip install git+https://github.com/pymssql/pymssql.git
+

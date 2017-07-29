@@ -29,4 +29,5 @@ cd /pentest
 git clone https://github.com/csababarta/ntdsxtract
 cd ntdsxtract
 python setup.py install
+sudo pip install git+https://github.com/pymssql/pymssql.git
 ```
