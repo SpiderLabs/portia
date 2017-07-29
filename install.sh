@@ -23,9 +23,13 @@ cd /opt
 git clone https://github.com/csababarta/ntdsxtract && cd ntdsxtract
 python setup.py install
 
+sudo pip install git+https://github.com/pymssql/pymssql.git
+
+cd /opt
+git clone https://github.com/volatilityfoundation/volatility && cd volatility
+python setup.py install
+
 cd /opt
 git clone https://github.com/milo2012/portia.git && cd portia
 ./portia.py
-
-sudo pip install git+https://github.com/pymssql/pymssql.git
 
