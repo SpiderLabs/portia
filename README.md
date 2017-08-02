@@ -14,18 +14,23 @@ https://asciinema.org/a/45ry3g26devqcabpugwyz4to5
 ## Dependencies
 
 ```
-pip install pysmb tabulate termcolor xmltodict impacket
-
-apt install autoconf automake autopoint libtool pkg-config
-mkdir /pentest
-cd/pentest
-git clone https://github.com/libyal/libesedb.git
-cd libesedb
+apt-get update
+apt-get install -y autoconf automake autopoint libtool pkg-config freetds-dev
+pip install pysmb tabulate termcolor xmltodict pyasn1 pycrypto pyOpenSSL dnspython netaddr python-nmap
+cd /opt
+git clone https://github.com/CoreSecurity/impacket
+python setup.py install
+cd /opt
+git clone https://github.com/libyal/libesedb.git && cd libesedb
 ./synclibs.sh
 ./autogen.sh
-cd /pentest
-git clone https://github.com/csababarta/ntdsxtract
-cd ntdsxtract
+cd /opt
+git clone https://github.com/csababarta/ntdsxtract && cd ntdsxtract
 python setup.py install
-sudo pip install git+https://github.com/pymssql/pymssql.git
+pip install git+https://github.com/pymssql/pymssql.git
+cd /opt
+git clone https://github.com/volatilityfoundation/volatility && cd volatility
+python setup.py install
+cd /opt
+git clone https://github.com/SpiderLabs/portia
 ```
