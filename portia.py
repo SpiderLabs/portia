@@ -4423,7 +4423,7 @@ if args.debug:
 if args.domain:
     domain=args.domain
 else:
-    domain=''
+    domain='WORKGROUP'
 if args.username:
     username=args.username
 if args.password:
