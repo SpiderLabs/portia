@@ -1662,32 +1662,32 @@ def testDomainCredentials(username,password,passwordHash,ip,domain,silent):
             resultsOutput=executer.getOutput()
             if "STATUS_LOGON_FAILURE" in str(loginStatus):
                 if password!=None:
-                    if silent==False:
-                        print (setColor("[-]", bold, color="red"))+" "+ip+":445 | "+domain+"\\"+username+":"+password+" [Failed]"
+                    #if silent==False:
+                    #    print (setColor("[-]", bold, color="red"))+" "+ip+":445 | "+domain+"\\"+username+":"+password+" [Failed]"
                     return False,foundAdmin 
                 else:
-                    if silent==False:
-                        print (setColor("[-]", bold, color="red"))+" "+ip+":445 | "+domain+"\\"+username+":"+passwordHash+" [Failed]"
+                    #if silent==False:
+                    #    print (setColor("[-]", bold, color="red"))+" "+ip+":445 | "+domain+"\\"+username+":"+passwordHash+" [Failed]"
                     return False,foundAdmin 
             else:
-                if "rpc_s_access_denied" in str(loginStatus):
+        	if 'rpc_s_access_denied' in str(loginStatus) or 'WBEM_E_ACCESS_DENIED' in str(loginStatus) or 'access_denied' in str(loginStatus).lower():
                     if password!=None:
-                        if silent==False:
-                            print (setColor("[+]", bold, color="green"))+" "+ip+":445 | "+domain+"\\"+username+":"+password+" [OK]"
+                        #if silent==False:
+                        #    print (setColor("[+]", bold, color="green"))+" "+ip+":445 | "+domain+"\\"+username+":"+password+" [OK]"
                         return True,foundAdmin 
                     else:
-                        if silent==False:
-                            print (setColor("[+]", bold, color="green"))+" "+ip+":445 | "+domain+"\\"+username+":"+passwordHash+" [OK]"
+                        #if silent==False:
+                        #    print (setColor("[+]", bold, color="green"))+" "+ip+":445 | "+domain+"\\"+username+":"+passwordHash+" [OK]"
                         return True,foundAdmin 
                 else:
                     if password!=None:
-                        if silent==False:
-                            print (setColor("[+]", bold, color="green"))+" "+ip+":445 | "+domain+"\\"+username+":"+password+" [OK][Admin]"
+                        #if silent==False:
+                        #    print (setColor("[+]", bold, color="green"))+" "+ip+":445 | "+domain+"\\"+username+":"+password+" [OK][Admin]"
                         foundAdmin=True
                         return True,foundAdmin 
                     else:
-                        if silent==False:
-                            print (setColor("[+]", bold, color="green"))+" "+ip+":445 | "+domain+"\\"+username+":"+passwordHash+" [OK][Admin]"
+                        #if silent==False:
+                        #    print (setColor("[+]", bold, color="green"))+" "+ip+":445 | "+domain+"\\"+username+":"+passwordHash+" [OK][Admin]"
                         foundAdmin=True
                         return True,foundAdmin 
         except:
@@ -2068,14 +2068,21 @@ def testAccount(targetIP, domain, username, password, passwordHash):
         if domain==None or len(domain)<1:
             domain='WORKGROUP'
         cmd='whoami'
-        results,status=runWMIEXEC(targetIP, domain, username, password, passwordHash, cmd) 
+	complete=False
+	results=''
+	status=''
+	while complete==False:
+	        results,status=runWMIEXEC(targetIP, domain, username, password, passwordHash, cmd) 
+		#print targetIP+"\t"+status
+		if "can't start new thread" not in status:
+			complete=True
         if 'STATUS_LOGON_FAILURE' in str(status):
             if len(domain)>0:
                 print (setColor("[-]", bold, color="red"))+" "+targetIP+":445 | "+domain+"\\"+username+":"+password+" [Failed]"            
             else:
                 print (setColor("[-]", bold, color="red"))+" "+targetIP+":445 | "+username+":"+password+" [Failed]"            
             return False
-        elif 'rpc_s_access_denied' in str(status):
+        elif 'rpc_s_access_denied' in str(status) or 'WBEM_E_ACCESS_DENIED' in str(status) or 'access_denied' in str(status).lower():
             if len(domain)>0:
                 print (setColor("[-]", bold, color="red"))+" "+targetIP+":445 | "+domain+"\\"+username+":"+password+" [OK]"            
             else:
@@ -2092,7 +2099,7 @@ def testAccountSilent(targetIP, domain, username, password, passwordHash):
     if username!="guest":
         cmd='whoami'
         results,status=runWMIEXEC(targetIP, domain, username, password, passwordHash, cmd) 
-        if 'STATUS_LOGON_FAILURE' in str(status) or "rpc_s_access_denied" in str(status):
+        if 'STATUS_LOGON_FAILURE' in str(status) or 'rpc_s_access_denied' in str(status) or 'WBEM_E_ACCESS_DENIED' in str(status) or 'access_denied' in str(status).lower():
             return False
         else:
             return True
@@ -3461,7 +3468,7 @@ def mountSysvol(username,password):
                         if tmpLoginOK==True:
                                 print "User: '"+tmpusername+"' is not a 'Domain Admin'"          
                                 if len(nbList)>0:
-                                    if tmpip in nbList:              
+                                    if tmpip in nbList:       
                                         tmpLoginOK,tmpAdminOK=testDomainCredentials(username,password,passwordHash,tmpip,domain,False)
                                         if tmpAdminOK==False and tmpLoginOK==False:                        
                                             if len(nbList)>0 and len(tmpPassList)>0:
