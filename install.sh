@@ -11,7 +11,7 @@ pip install pysmb tabulate termcolor xmltodict pyasn1 pycrypto pyOpenSSL dnspyth
 ln -sf /opt /pentest
 
 cd /opt
-git clone https://github.com/CoreSecurity/impacket
+git clone https://github.com/CoreSecurity/impacket && cd impacket
 python setup.py install
 
 cd /opt
