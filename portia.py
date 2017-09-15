@@ -2074,7 +2074,7 @@ def testAccount(targetIP, domain, username, password, passwordHash):
 	while complete==False:
 	        results,status=runWMIEXEC(targetIP, domain, username, password, passwordHash, cmd) 
 		#print targetIP+"\t"+status
-		if "can't start new thread" not in status:
+		if "can't start new thread" not in str(status):
 			complete=True
         if 'STATUS_LOGON_FAILURE' in str(status):
             if len(domain)>0:
