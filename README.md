@@ -34,3 +34,29 @@ python setup.py install
 cd /opt
 git clone https://github.com/SpiderLabs/portia
 ```
+  
+##How Portia Works
+```
+
+                        #7 Use Impersonation Token
+                +------Run Mimikatz on DC---------------+   +---------------------------------------------------------+
+                |      Dump Password Hashes from DC     |   |                                                         |
+                |                                       |   |                                                         |
++------------+  |     +-------------+                +--v---v-----+                                                   |
+|Workstation |  |     | Workstation |                | Domain     |        #3 Checks if Account                       |
+|(Workgroup) |  |     | (Domain)    |                | Controller | <------is in Domain Admin Group                   |
+++---+-------+  |     +-+----+------+                +------+-----+                           |                       |
+ ^   ^          |       ^    ^                              ^                                 |                       |
+ |   |          |       |    |                              |                                 |                       |
+ |   |          |       |    |                          #4 Check SYSVOL                   #2 Enumerate Users          |
+ |   |          |       |    |                          for Passwords                     in Domain Admin Group       |
+ |   |#6 Checks for     | #5 Checks if account              |                                 |                       |
+ |   |Impersonation     | has admin rights          +-------+------+                          |                       |
+ |   +Tokens--------------on host-------------------+  Hacker      +-------#1 Checks----------+                       |
+ |                      |                           +----+---+-----+       credentials                                |
+ |                      |                                |   |                                                        |
+ |                      |                                |   |                                                        |
+ |                      |                                |   |                                                        |
+ |           #8 Use New Hashes / Passwords               |   +--------------------------------------------------------+
+ +-----------to Compromise Other Hosts-------------------+
+```
