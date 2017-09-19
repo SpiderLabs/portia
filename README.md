@@ -35,7 +35,7 @@ cd /opt
 git clone https://github.com/SpiderLabs/portia
 ```
   
-##How Portia Works
+## How Portia Works
 ```
 
                         #7 Use Impersonation Token
