@@ -7,7 +7,7 @@ Portia aims to automate a number of techniques commonly performed on internal ne
 
 Portia is a genus of jumping spider that feeds on other spiders - known for their intelligent hunting behaviour and problem solving capabilities usually only found in larger animals
   
-A new functionality has been added to the 'hopandhack.py' script.  
+A new functionality has been added.  The new script is 'hopandhack.py'.  
 The new script ‘hopandhack‘ can be used by attackers to automatic find and hunt hosts that are not directly accessible from the attacker’s machine.  In some organizations, IT administrators have to use something called a ‘jump box’ or VPN to access the secure data centre or PCI network where sensitive data are stored.  
   
 The ‘hopandhack’ script automates the process of finding hosts with the necessary routes to these secure network and compromises them.  The functionality of hopandhack will be incorporated into Portia in the next week or so.  
