@@ -742,8 +742,9 @@ try:
                                                         time.sleep(3)
 
                                                 print "\n"+(setColor("[+]", bold, color="green"))+" Clearing temp files on "+targetIP
-                                                command='cmd /c del C:\\windows\\temp /F /Q' 
-                                                results,status=runWMIEXEC(targetIP, domain, username, password, passwordHash, command)            
+                                                #command='cmd /c del C:\\windows\\temp /F /Q' 
+                                                #results,status=runWMIEXEC(targetIP, domain, username, password, passwordHash, command)            
+                                                #print results
                                                 #executer = smbexec.CMDEXEC(tmpusername, tmppassword, tmpdomain, hashes, aesKey, k, dc_ip, mode, share, relayPortNo, command)
                                                 #executer.run(targetIP,targetIP)
                                                 #if ip in str(results) and results!=None:                            
@@ -755,15 +756,16 @@ try:
                     #    print (setColor("[+]", bold, color="green"))+" Testing credentials against "+ip+" [NOT OK] ("+tmpdomain+"\\"+tmpusername+"|"+tmppassword+")"
                     #    os._exit(1)
                 finalComplete=True
-
         os.remove(web_dir+"/"+tmpFilename1)
         os.remove(web_dir+"/"+tmpFilename2)
         os.remove(web_dir+"/"+tmpFilename3)
         os.remove(web_dir+"/"+tmpFilename4)
         os.remove(web_dir+"/"+tmpFilename5)
         os.remove(web_dir+"/"+tmpFilename6)
-
-	os._exit(0)
+        print "exit0"
+        sys.exit()
+        print "exit1"
+        os._exit(1)
 except  (Exception, KeyboardInterrupt), e:
     logging.critical(str(e))
 os._exit(1)
