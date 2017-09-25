@@ -3522,6 +3522,7 @@ def getOSType():
     return platform.system()
 
 def mountSysvol(username,password):
+    print (setColor("[+]", bold, color="green"))+" Checking the SYSVOL folder"
     #Sample cpassword=j1Uyj3Vx8TY9LtLZil2uAuZkFQA/4latT76ZwgdHdhw
     tmpPassList=[]
     status,foundAdmin=testDomainCredentials(username,password,None,dcList[0],'WORKGROUP',True)
@@ -4313,7 +4314,7 @@ def testMS14_068(ip,domain,username,password,passwordHash):
     netbiosName=''
     try:
         netbiosName=n.queryIPForName(ip)[0]
-    except Exeception:
+    except Exception as e:
         pass
 
     print (setColor("\nTesting MS14-068", color="green"))
