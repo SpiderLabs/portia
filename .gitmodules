@@ -1,0 +1,3 @@
+[submodule "modules/impacket"]
+	path = modules/impacket
+	url = https://github.com/CoreSecurity/impacket
