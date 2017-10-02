@@ -31,5 +31,6 @@ python setup.py install
 
 cd /opt
 git clone https://github.com/SpiderLabs/portia.git && cd portia
+git submodule init && git submodule update --recursive
 ./portia.py
 
