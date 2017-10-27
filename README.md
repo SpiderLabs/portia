@@ -33,6 +33,10 @@ cd /opt
 git clone https://github.com/libyal/libesedb.git && cd libesedb
 ./synclibs.sh
 ./autogen.sh
+./configure 
+make
+make install
+ldconfig
 cd /opt
 git clone https://github.com/csababarta/ntdsxtract && cd ntdsxtract
 python setup.py install
