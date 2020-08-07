@@ -1,3 +1,6 @@
+:warning: *NOTE: This tool is no longer under active maintenance.*
+
+
 # portia
 
 Portia aims to automate a number of techniques commonly performed on internal network penetration tests after a low privileged account has been compromised
